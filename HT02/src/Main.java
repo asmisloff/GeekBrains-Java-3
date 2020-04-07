@@ -1,11 +1,14 @@
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.sql.*;
 import java.util.HashMap;
+import java.util.Scanner;
 
 public class Main {
     private static Connection connection;
     private static Statement stmt;
     private static PreparedStatement pstmt;
-
+    private static HashMap<String, String[]> newData = new HashMap<>();
 
     public static void main(String[] args) throws SQLException {
 
@@ -75,20 +78,68 @@ public class Main {
 //        connection.setAutoCommit(true);
 //        stmt.executeUpdate("INSERT INTO students (name, score) VALUES ('Bob3', 30)");
 
-        createBooksTable();
-        insertBook("111", "Л. Н. Толстой", "Война и мир");
-        insertBook("112", "Л. Н. Толстой", "Хаджи Мурат");
-        insertBook("113", "Ж. Верн", "Дети капитана Гранта");
-        updateBookName("111", "Детство");
-        ResultSet rs = selectBooksByAuthor("Л. Н. Толстой");
-        while (rs.next()) {
-            System.out.printf("%s -- %s -- %s\n",
-                    rs.getString("ISBN"), rs.getString("Author"), rs.getString("Name"));
+//        createBooksTable();
+//        insertBook("111", "Л. Н. Толстой", "Война и мир");
+//        insertBook("112", "Л. Н. Толстой", "Хаджи Мурат");
+//        insertBook("113", "Ж. Верн", "Дети капитана Гранта");
+//        updateBookName("111", "Детство");
+//        ResultSet rs = selectBooksByAuthor("Л. Н. Толстой");
+//        while (rs.next()) {
+//            System.out.printf("%s -- %s -- %s\n",
+//                    rs.getString("ISBN"), rs.getString("Author"), rs.getString("Name"));
+//        }
+//        deleteBook("113");
+//
+//        disconnect();
+
+        readFile("studs.txt");
+        ResultSet rs = selectByIDs(
+                newData.keySet().toString()
+                        .replace('[', '(')
+                        .replace(']', ')'),
+                stmt);
+        System.out.printf("%d records have been updated\n", updateScores(rs));
+        for (String id : newData.keySet()) {
+            System.out.printf("Warning: student %s (id %s) doesn't not exist in the DB! Ignored.\n", newData.get(id)[0], id);
         }
-        deleteBook("113");
+    }
 
-        disconnect();
+    public static int updateScores(ResultSet rs) throws SQLException {
+        pstmt = connection.prepareStatement("UPDATE students SET score = ? WHERE id = ?");
+        while (rs.next()) {
+            String id = rs.getString("id");
+            pstmt.setString(1, newData.get(id)[1]);
+            pstmt.setString(2, id);
+            pstmt.addBatch();
+            newData.remove(id);
+        }
+        return pstmt.executeBatch().length;
+    }
 
+    public static void readFile(String path) {
+        try (Scanner sc = new Scanner(new File(path))) {
+            for (int i = 0; i < 3; i++) { //skip target and headers
+                sc.nextLine();
+            }
+
+            String[] fields = new String[3];
+            while (sc.hasNext()) {
+                fields = sc.nextLine().split("  ");
+                newData.put(fields[0], new String[]{fields[1], fields[2]});
+            }
+
+            System.out.println("------------------ New data about students ------------------");
+            for (String key : newData.keySet()) {
+                System.out.printf("%s : [%s, %s]\n", key, newData.get(key)[0], newData.get(key)[1]);
+            }
+            System.out.println("-------------------------------------------------------------");
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static ResultSet selectByIDs(String ids, Statement stmt) throws SQLException {
+        return stmt.executeQuery(String.format("SELECT Id FROM Students WHERE Id in %s", ids));
     }
 
     public static void connect() throws ClassNotFoundException, SQLException {
