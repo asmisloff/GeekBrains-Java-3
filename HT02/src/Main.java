@@ -1,4 +1,5 @@
 import java.sql.*;
+import java.util.HashMap;
 
 public class Main {
     private static Connection connection;
@@ -66,14 +67,25 @@ public class Main {
 //        pstmt.executeBatch();
 //
 //        connection.setAutoCommit(true);
+//
+//        stmt.executeUpdate("INSERT INTO students (name, score) VALUES ('Bob1', 10)");
+//        Savepoint sp = connection.setSavepoint();
+//        stmt.executeUpdate("INSERT INTO students (name, score) VALUES ('Bob2', 20)");
+//        connection.rollback(sp);
+//        connection.setAutoCommit(true);
+//        stmt.executeUpdate("INSERT INTO students (name, score) VALUES ('Bob3', 30)");
 
-        stmt.executeUpdate("INSERT INTO students (name, score) VALUES ('Bob1', 10)");
-        Savepoint sp = connection.setSavepoint();
-        stmt.executeUpdate("INSERT INTO students (name, score) VALUES ('Bob2', 20)");
-        connection.rollback(sp);
-        connection.setAutoCommit(true);
-        stmt.executeUpdate("INSERT INTO students (name, score) VALUES ('Bob3', 30)");
-
+        createBooksTable();
+        insertBook("111", "Л. Н. Толстой", "Война и мир");
+        insertBook("112", "Л. Н. Толстой", "Хаджи Мурат");
+        insertBook("113", "Ж. Верн", "Дети капитана Гранта");
+        updateBookName("111", "Детство");
+        ResultSet rs = selectBooksByAuthor("Л. Н. Толстой");
+        while (rs.next()) {
+            System.out.printf("%s -- %s -- %s\n",
+                    rs.getString("ISBN"), rs.getString("Author"), rs.getString("Name"));
+        }
+        deleteBook("113");
 
         disconnect();
 
@@ -91,5 +103,50 @@ public class Main {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+
+    public static int createBooksTable() throws SQLException {
+        ResultSet rs = stmt.executeQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='Books';");
+        if (rs.next()) return -1;
+
+        stmt.executeUpdate("CREATE TABLE Books (" +
+                "ISBN STRING (13) PRIMARY KEY," +
+                "Author STRING (64)," +
+                "Name STRING (256));");
+        return 0;
+    }
+
+    public static int insertBook(String isbn, String author, String name) throws SQLException {
+        ResultSet rs = stmt.executeQuery(String.format("SELECT isbn FROM Books WHERE ISBN = %s", isbn));
+        if (rs.next()) return -1;
+
+        pstmt = connection.prepareStatement("INSERT INTO Books (ISBN, Author, Name) VALUES (?, ?, ?);");
+        pstmt.setString(1, isbn);
+        pstmt.setString(2, author);
+        pstmt.setString(3, name);
+        pstmt.executeUpdate();
+        return 0;
+    }
+
+    public static int updateBookName(String isbn, String name) throws SQLException {
+        ResultSet rs = stmt.executeQuery(String.format("SELECT isbn FROM Books WHERE ISBN = %s", isbn));
+        if (!rs.next()) return -1;
+
+        pstmt = connection.prepareStatement("UPDATE Books " +
+                "SET Name = ? WHERE ISBN = ?;");
+        pstmt.setString(1, name);
+        pstmt.setString(2, isbn);
+        pstmt.executeUpdate();
+        return 0;
+    }
+
+    public static ResultSet selectBooksByAuthor(String author) throws SQLException {
+        return stmt.executeQuery(String.format("SELECT * FROM Books WHERE Author = '%s'", author));
+    }
+
+    public static int deleteBook(String isbn) throws SQLException {
+        pstmt = connection.prepareStatement("DELETE FROM Books WHERE ISBN = ?");
+        pstmt.setString(1, isbn);
+        return pstmt.executeUpdate();
     }
 }
