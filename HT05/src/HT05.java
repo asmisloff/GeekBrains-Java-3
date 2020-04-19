@@ -4,8 +4,9 @@ public class HT05 {
     public static final int CARS_COUNT = 4;
     public static void main(String[] args) {
         System.out.println("ВАЖНОЕ ОБЪЯВЛЕНИЕ >>> Подготовка!!!");
+        Start start = new Start(CARS_COUNT);
         Race race = new Race(
-                new Start(CARS_COUNT),
+                start,
                 new Road(60),
                 new Tunnel(new Semaphore(CARS_COUNT / 2)),
                 new Road(40),
@@ -23,6 +24,8 @@ public class HT05 {
 
         for (int i = 0; i < CARS_COUNT; i++) {
             try {
+                start.getCdl().await();
+                System.out.println("ВАЖНОЕ ОБЪЯВЛЕНИЕ >>> Гонка началась!!!");
                 threads[i].join();
             } catch (InterruptedException e) {
                 e.printStackTrace();

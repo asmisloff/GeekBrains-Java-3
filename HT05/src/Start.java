@@ -5,6 +5,10 @@ public class Start extends Stage {
     private CountDownLatch cdl;
     private boolean flag = false;
 
+    public CountDownLatch getCdl() {
+        return cdl;
+    }
+
     public Start(int n) {
         cdl = new CountDownLatch(n);
     }
@@ -17,7 +21,7 @@ public class Start extends Stage {
             cdl.countDown();
             cdl.await();
 
-            printOnce("ВАЖНОЕ ОБЪЯВЛЕНИЕ >>> Гонка началась!!!");
+            //printOnce("ВАЖНОЕ ОБЪЯВЛЕНИЕ >>> Гонка началась!!!");
     }
 
     private synchronized void printOnce(String msg) {
